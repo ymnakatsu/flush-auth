@@ -1,4 +1,6 @@
+/// App window commands.
 pub mod window {
+
     use tauri::Manager;
 
     #[tracing::instrument]
@@ -15,46 +17,48 @@ pub mod window {
     }
 }
 
+/// Account data prosess commands.
 pub mod account {
 
     use crate::{
-        manager::AccountManager,
-        service::{store, totp},
+        db::{
+            account::{AccountDisplay, AccountForm},
+            manager::ConnPool,
+        },
+        service::{account::AccountService, totp},
     };
 
     #[tracing::instrument]
     #[tauri::command]
-    pub fn calc_totp(
-        id: String,
-        account_manager: tauri::State<'_, AccountManager>,
-    ) -> totp::TotpData {
-        totp::calc(id, account_manager.get_raw_data())
+    pub fn calc_totp(id: String, connection: tauri::State<'_, ConnPool>) -> totp::TotpData {
+        let conn = &mut connection.get().expect("Connection not found.");
+        totp::calc(id, AccountService::find_all(conn))
     }
 
     #[tracing::instrument]
     #[tauri::command]
-    pub fn load_accounts(
-        account_manager: tauri::State<'_, AccountManager>,
-    ) -> Vec<store::AccountDisplay> {
-        account_manager.init();
-        account_manager.get_display_data()
+    pub fn load_accounts(connection: tauri::State<'_, ConnPool>) -> Vec<AccountDisplay> {
+        let conn = &mut connection.get().expect("Connection not found.");
+        AccountService::find_all_display(conn)
     }
 
     #[tracing::instrument]
     #[tauri::command]
     pub fn save_account(
-        form: store::AccountForm,
-        account_manager: tauri::State<'_, AccountManager>,
-    ) -> Vec<store::AccountDisplay> {
-        account_manager.save(form)
+        form: AccountForm,
+        connection: tauri::State<'_, ConnPool>,
+    ) -> Vec<AccountDisplay> {
+        let conn = &mut connection.get().expect("Connection not found.");
+        AccountService.save(conn, form)
     }
 
     #[tracing::instrument]
     #[tauri::command]
     pub fn delete_account(
         id: String,
-        account_manager: tauri::State<'_, AccountManager>,
-    ) -> Vec<store::AccountDisplay> {
-        account_manager.delete(id)
+        connection: tauri::State<'_, ConnPool>,
+    ) -> Vec<AccountDisplay> {
+        let conn = &mut connection.get().expect("Connection not found.");
+        AccountService.delete(conn, id)
     }
 }

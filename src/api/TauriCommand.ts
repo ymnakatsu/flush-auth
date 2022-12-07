@@ -17,16 +17,7 @@ export class TauriCommand {
       form: {
         id: form.id,
         account_name: form.account_name,
-        secret_key: form.issuer,
-        issuer: form.issuer,
-      } as AccountFormData,
-    })) as AccountData[];
-  };
-
-  public static updateAccount = async (form: AccountFormData) => {
-    return (await invoke("save_account", {
-      form: {
-        account_name: form.account_name,
+        secret_key: form.secret_key,
         issuer: form.issuer,
       } as AccountFormData,
     })) as AccountData[];

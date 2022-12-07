@@ -33,8 +33,8 @@ export const AccountEditModal = () => {
   const onSubmit: SubmitHandler<Inputs> = async (data) => {
     const accounts = await TauriCommand.saveAccount({
       id: isUpdateAccount ? account.id : "",
+      secret_key: data.secretKey ?? "",
       account_name: data.accountName,
-      secret_key: data.secretKey,
       issuer: data.issuer,
     });
     setAccounts([...accounts]);

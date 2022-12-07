@@ -4,28 +4,32 @@
 )]
 
 mod commands;
-mod manager;
+mod db;
+mod schema;
 mod service;
 
+use std::sync::Arc;
+
+use dotenvy::dotenv;
 use service::store;
 use tauri::AppHandle;
+use tauri::Config;
 use tauri::PhysicalPosition;
 use tauri::PhysicalSize;
 use tauri::RunEvent;
 use tauri::WindowEvent;
 use tauri::{Manager, SystemTray, SystemTrayEvent};
-use tracing::info;
 use tracing::Level;
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::{fmt, layer::SubscriberExt};
 use tracing_unwrap::ResultExt;
 
+use crate::db::manager::ConnPool;
+
 fn main() {
-    setup_logger();
-    info!("Start");
+    dotenv().expect(".env file not found");
 
     tauri::Builder::default()
-        .manage(manager::AccountManager::new())
         .system_tray(
             SystemTray::new(), // .with_menu(tray_menu),
                                // .with_menu_on_left_click(false),
@@ -34,7 +38,7 @@ fn main() {
             tauri::WindowEvent::Focused(focused) => {
                 if !focused {
                     // focus out event
-                    // global_event.window().hide().unwrap();
+                    global_event.window().hide().unwrap();
                 }
             }
             _ => (),
@@ -45,12 +49,9 @@ fn main() {
                 size: _,
                 ..
             } => {
-                // println!("({}:{})", pos.x.to_string(), pos.y.to_string());
+                // Calc system tray position.
                 let window = app.get_window("main").unwrap();
                 window.show().unwrap();
-                // window
-                //     .set_position(PhysicalPosition::<f64>::new(pos.x - f64::from(260), pos.y))
-                //     .unwrap();
                 window.set_focus().unwrap();
                 window.set_always_on_top(true).unwrap();
                 window.set_always_on_top(false).unwrap();
@@ -64,14 +65,13 @@ fn main() {
                     width: window.outer_size().unwrap().width as f64,
                     height: window.outer_size().unwrap().height as f64,
                 };
-
-                // 1、クリック座標x + アプリ横幅 > 画面横幅 ? クリック座標x - アプリ横幅 : クリック座標x
+                // 1: Click_Coordinate.x + App_Width > Screen_Width ? Click_Coordinate.x - App_Width : Click_Coordinate.x
                 let x = if pos.x + window_size.width - f64::from(100) > screen_size.width {
                     pos.x - window_size.width
                 } else {
                     pos.x
                 };
-                // 2、クリック座標y + アプリ長さ > 画面縦幅 ? クリック座標y - アプリ長さ : クリック座標y
+                // 2: Click_Coordinate.y + App_Width > Screen_Width ? Click_Coordinate.y - App_Width : Click_Coordinate.y
                 let y = if pos.y + window_size.height > screen_size.height {
                     pos.y - window_size.height
                 } else {
@@ -92,16 +92,22 @@ fn main() {
             commands::account::delete_account,
         ])
         .setup(|app| {
+            #[cfg(target_os = "macos")]
+            app.set_activation_policy(tauri::ActivationPolicy::Accessory);
+            let window = app.get_window("main").unwrap();
+            #[cfg(debug_assertions)]
             {
-                #[cfg(target_os = "macos")]
-                app.set_activation_policy(tauri::ActivationPolicy::Accessory);
-                let window = app.get_window("main").unwrap();
-                #[cfg(debug_assertions)]
-                {
-                    window.open_devtools();
-                    window.close_devtools();
-                }
+                window.open_devtools();
+                window.close_devtools();
             }
+            let config = app.config();
+            // Setup logger settings.
+            setup_logger(&config);
+            // Run DB Migration.
+            let conn = db::manager::establish_connection(&config);
+            db::manager::run_migration(&conn);
+            // Save global variable.
+            app.manage::<ConnPool>(conn);
             Ok(())
         })
         .build(tauri::generate_context!())
@@ -124,8 +130,8 @@ fn bootstrap() -> Box<dyn Fn(&AppHandle, RunEvent) + Send + Sync + 'static> {
 }
 
 /// Init Logger.
-fn setup_logger() {
-    let mut log_file_path = store::get_app_path();
+fn setup_logger(config: &Arc<Config>) {
+    let mut log_file_path = store::get_app_path(&config);
     log_file_path.push("logs");
     let file_appender = tracing_appender::rolling::daily(log_file_path, "application.log");
 
