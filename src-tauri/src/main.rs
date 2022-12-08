@@ -1,5 +1,5 @@
 #![cfg_attr(
-    all(not(debug_assertions), target_os = "macos"),
+    all(not(debug_assertions), target_os = "windows"),
     windows_subsystem = "windows"
 )]
 
@@ -10,7 +10,6 @@ mod service;
 
 use std::sync::Arc;
 
-use dotenvy::dotenv;
 use service::store;
 use tauri::AppHandle;
 use tauri::Config;
@@ -27,8 +26,6 @@ use tracing_unwrap::ResultExt;
 use crate::db::manager::ConnPool;
 
 fn main() {
-    dotenv().expect(".env file not found");
-
     tauri::Builder::default()
         .system_tray(
             SystemTray::new(), // .with_menu(tray_menu),
