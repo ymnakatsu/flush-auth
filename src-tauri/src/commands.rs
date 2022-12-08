@@ -20,6 +20,8 @@ pub mod window {
 /// Account data prosess commands.
 pub mod account {
 
+    use tracing::error;
+
     use crate::{
         db::{
             account::{AccountDisplay, AccountForm},
@@ -31,14 +33,20 @@ pub mod account {
     #[tracing::instrument]
     #[tauri::command]
     pub fn calc_totp(id: String, connection: tauri::State<'_, ConnPool>) -> totp::TotpData {
-        let conn = &mut connection.get().expect("Connection not found.");
+        let conn = &mut connection
+            .get()
+            .map_err(|e| error!("Connection not found. {}", e))
+            .unwrap();
         totp::calc(id, AccountService::find_all(conn))
     }
 
     #[tracing::instrument]
     #[tauri::command]
     pub fn load_accounts(connection: tauri::State<'_, ConnPool>) -> Vec<AccountDisplay> {
-        let conn = &mut connection.get().expect("Connection not found.");
+        let conn = &mut connection
+            .get()
+            .map_err(|e| error!("Connection not found. {}", e))
+            .unwrap();
         AccountService::find_all_display(conn)
     }
 
@@ -48,7 +56,10 @@ pub mod account {
         form: AccountForm,
         connection: tauri::State<'_, ConnPool>,
     ) -> Vec<AccountDisplay> {
-        let conn = &mut connection.get().expect("Connection not found.");
+        let conn = &mut connection
+            .get()
+            .map_err(|e| error!("Connection not found. {}", e))
+            .unwrap();
         AccountService.save(conn, form)
     }
 
@@ -58,7 +69,10 @@ pub mod account {
         id: String,
         connection: tauri::State<'_, ConnPool>,
     ) -> Vec<AccountDisplay> {
-        let conn = &mut connection.get().expect("Connection not found.");
+        let conn = &mut connection
+            .get()
+            .map_err(|e| error!("Connection not found. {}", e))
+            .unwrap();
         AccountService.delete(conn, id)
     }
 }

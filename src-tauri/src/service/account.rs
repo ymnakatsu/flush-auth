@@ -1,7 +1,7 @@
 use chrono::Utc;
 use diesel::result::Error;
 use diesel::{insert_into, ExpressionMethods, RunQueryDsl, SqliteConnection};
-use tracing::debug;
+use tracing::{debug, error};
 use uuid::Uuid;
 
 use crate::db::account::{Account, AccountData, AccountDisplay, AccountForm};
@@ -79,7 +79,8 @@ impl AccountService {
                 ))
                 .execute(conn)
         })
-        .expect("Transaction Error.");
+        .map_err(|e| error!("Transaction Error: {}", e))
+        .unwrap();
         AccountService::find_all_display(conn)
     }
 

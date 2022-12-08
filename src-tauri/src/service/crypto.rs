@@ -6,29 +6,36 @@ use aes_gcm::{
     Key, // Or `Aes128Gcm`
     Nonce,
 };
+use tracing::error;
 
 // TODO:
 #[allow(dead_code)]
 pub fn encrypt(text: String) -> Vec<u8> {
-    let conf_key = env::var("CRYPTO_KEY").expect("CRYPTO_KEY must be set");
+    let conf_key = env::var("CRYPTO_KEY")
+        .map_err(|e| error!("CRYPTO_KEY must be set. {}", e))
+        .unwrap();
     let key = Key::<Aes256Gcm>::from_slice(conf_key.as_bytes());
     let cipher = Aes256Gcm::new(&key);
     let nonce = Nonce::from_slice(b"unique nonce"); // 96-bits; unique per message
     cipher
         .encrypt(nonce, text.as_ref())
-        .expect("Encryption failed.")
+        .map_err(|e| error!("Encryption failed. {}", e))
+        .unwrap()
 }
 
 // TODO:
 #[allow(dead_code)]
 pub fn decrypt(encrypt: String) -> String {
-    let conf_key = env::var("CRYPTO_KEY").expect("CRYPTO_KEY must be set");
+    let conf_key = env::var("CRYPTO_KEY")
+        .map_err(|e| error!("CRYPTO_KEY must be set. {}", e))
+        .unwrap();
     let key = Key::<Aes256Gcm>::from_slice(conf_key.as_bytes());
     let cipher = Aes256Gcm::new(&key);
     let nonce = Nonce::from_slice(b"unique nonce"); // 96-bits; unique per message
     let plaintext = cipher
         .decrypt(nonce, encrypt.as_bytes().as_ref())
-        .expect("Decryption failed.");
+        .map_err(|e| error!("Decryption failed. {}", e))
+        .unwrap();
     let converted = String::from_utf8(plaintext).unwrap();
     return converted;
 }
