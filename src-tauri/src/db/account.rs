@@ -20,7 +20,7 @@ pub struct Account {
 
 /// Account create and update struct
 #[derive(Insertable)]
-#[table_name = "accounts"]
+#[diesel(table_name = accounts)]
 pub struct AccountData<'a> {
     pub id: &'a String,
     pub secret_key: &'a String,
